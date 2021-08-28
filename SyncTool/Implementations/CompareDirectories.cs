@@ -42,6 +42,7 @@ namespace SyncTool.Implementations
             using StreamWriter writer = new StreamWriter(outstream);
             writer.Write(optString);
             writer.Flush();
+                Logger.Logger.Log("File Saved",LogLevel.Info);
             }
         }
 
