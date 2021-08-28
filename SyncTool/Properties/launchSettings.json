@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "SyncTool": {
+      "commandName": "Project",
+      "commandLineArgs": "-s \"D:\\Music\\Music Sorted\\Power Metal\\Rhapsody of Fire\" -t \"Y:\\Music\\Music Sorted\\Power Metal\\Rhapsody of Fire\" -v"
+    }
+  }
+}
