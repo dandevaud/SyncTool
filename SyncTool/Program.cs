@@ -37,6 +37,7 @@ namespace SyncTool
 
         private static void IntializeJob(Options opt)
         {
+           
             if (opt.Verbose)
             {
                 opt.LogLevel = LogLevel.Info;
@@ -47,6 +48,12 @@ namespace SyncTool
             };
 
             ((FileLogger)Logger.Logger.LoggerImpl.SecondLogger).PrintLogFileLocation();
+
+            if (opt.Source.FullName.Equals(opt.Target.FullName))
+            {
+                Logger.Logger.Log("Source and Target Directory are the same, stopping Sync", LogLevel.Error);
+                return;
+            }
 
             if (opt.RealTime)
             {

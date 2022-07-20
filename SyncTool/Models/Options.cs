@@ -1,16 +1,17 @@
 ﻿using System.IO;
 using CommandLine;
 using SyncTool.Logger;
+using System;
 
 namespace SyncTool.Models
 {
     public class Options
     {
-        [Option('s', "source", Required = true, ResourceType = typeof(DirectoryInfo))]
-        public DirectoryInfo Source { get; set; }
+        [Option('s', "source", Required = false, ResourceType = typeof(DirectoryInfo))]
+        public DirectoryInfo Source { get; set; } = new DirectoryInfo(Environment.CurrentDirectory);
 
-        [Option('t', "target", Required = true, ResourceType = typeof(DirectoryInfo))]
-        public DirectoryInfo Target { get; set; }
+        [Option('t', "target", Required = false, ResourceType = typeof(DirectoryInfo))]
+        public DirectoryInfo Target { get; set; } = new DirectoryInfo(Environment.CurrentDirectory);
 
         [Option('l', "logLevel", Required = false, ResourceType = typeof(LogLevel), Default = Logger.LogLevel.Error)]
         public LogLevel LogLevel { get; set; }
