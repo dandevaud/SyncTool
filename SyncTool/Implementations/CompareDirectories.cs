@@ -1,7 +1,11 @@
 ﻿using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
 using SyncTool.Converter;
 using SyncTool.Logger;
 using SyncTool.Models;
@@ -12,6 +16,8 @@ namespace SyncTool.Implementations
     {
         public ConcurrentDictionary<string,string> SourceDictionary { get; set; }
         public ConcurrentDictionary<string, string> TargetDictionary { get; set; }
+        private const int THREADS = 24;
+        private static readonly Semaphore semaphore = new Semaphore(THREADS,THREADS);
 
         private AppContext opt;
         private readonly FileCompare compare = new FileCompare();
@@ -55,29 +61,68 @@ namespace SyncTool.Implementations
                
          }
 
-        public void CompareSourceAndTarget()
+        public async Task CompareSourceAndTarget()
         {
             var targetKeys = new List<string>(TargetDictionary.Keys);
             var total = SourceDictionary.Count;
             var count = 0;
-            var collection = new ConcurrentDictionary<string,string>(SourceDictionary);
+            var collection = new ConcurrentDictionary<string, string>(SourceDictionary);
             var enumerator = collection.GetEnumerator();
+            Task[] task = new Task[total];
             while (enumerator.MoveNext())
             {
+
+                Logger.Logger.Log($" Added Task: {count} of {total}", LogLevel.Info);
+
                 var key = enumerator.Current.Key;
                 var value = enumerator.Current.Value;
-                Logger.Logger.Log($" Progress: {count} of {total}", LogLevel.Info);
+                task[count] = new Task(() => CheckFile(targetKeys, key, value));
+                task[count].Start();
                 count++;
-                if (TargetDictionary.ContainsKey(key))
+                if (count % 100 == 0) SaveFiles();
+            }
+           await WaitForTasks(task);
+
+            if (!opt.Opt.Delete) return;
+
+            foreach (var key in targetKeys)
+            {
+                Logger.Logger.Log($" {key} has been removed, adding to difference List", LogLevel.Info);
+                opt.Different.TryAdd(key, DifferenceType.Delete);
+            }
+
+        }
+
+        private async Task WaitForTasks(ICollection<Task> task)
+        {
+            var tasks = Task.WhenAll(task);
+            while (true)
+            {
+            var timer = Task.Delay(10000);
+            await Task.WhenAny(tasks,timer);
+                 Logger.Logger.Log($" Progress {task.Count(t => t.IsCompleted)} of {task.Count}", LogLevel.Info,System.ConsoleColor.Blue);
+               
+               SaveFiles();
+                 if(tasks.IsCompleted) return;
+            }
+        }
+
+
+        private void CheckFile(List<string> targetKeys,string key, string value)
+        { 
+            if(semaphore.WaitOne()){
+            try{
+               Logger.Logger.Log($" Started: checking {key}", LogLevel.Info);
+               if (TargetDictionary.ContainsKey(key))
                 {
                     bool modified = opt.Opt.Md5Hash ? !TargetDictionary[key].Equals(value) : !compare.Compare(
-                            opt.SourceDirectoryScanner.RootDirectory.FullName+Path.DirectorySeparatorChar+key,
-                            opt.TargetDirectoryScanner.RootDirectory.FullName+Path.DirectorySeparatorChar+key
+                            opt.SourceDirectoryScanner.RootDirectory.FullName + Path.DirectorySeparatorChar + key,
+                            opt.TargetDirectoryScanner.RootDirectory.FullName + Path.DirectorySeparatorChar + key
                         );
 
                     if (modified)
                     {
-                        Logger.Logger.Log($"{key} has been modified, adding to difference List",LogLevel.Info);
+                        Logger.Logger.Log($"{key} has been modified, adding to difference List", LogLevel.Info);
                         opt.Different.TryAdd(key, DifferenceType.Modified);
                     }
 
@@ -91,18 +136,15 @@ namespace SyncTool.Implementations
                 }
 
 
-                if(count%100==0) SaveFiles();
-                SourceDictionary.Remove(key, out var stringout);
-
-            }
-
-            if (!opt.Opt.Delete) return;
            
-                foreach (var key in targetKeys)
-                {
-                    Logger.Logger.Log($"{key} has been removed, adding to difference List", LogLevel.Info);
-                    opt.Different.TryAdd(key, DifferenceType.Delete);
-                }
+                SourceDictionary.Remove(key, out var stringout);
+                Logger.Logger.Log($" Ended: checking {key}", LogLevel.Info);          
+                } finally
+            {
+                  Logger.Logger.Log($" Semaphore Free slots count: {semaphore.Release()}", LogLevel.Info); ;
+            }
+            }
+            
             
         }
     }

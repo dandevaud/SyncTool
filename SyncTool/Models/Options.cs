@@ -26,5 +26,8 @@ namespace SyncTool.Models
 
          [Option('m', "md5", Required = false, Default = false, ResourceType = typeof(bool))]
         public bool Md5Hash { get; set; }
+
+        [Option('r', "realtime", Required = false)]
+        public bool RealTime { get; set;}
     }
 }

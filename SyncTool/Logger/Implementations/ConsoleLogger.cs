@@ -29,8 +29,9 @@ namespace SyncTool.Logger.Implementations
             {
                 Console.BackgroundColor = color;
                 SetColor(logLevel);
-                Console.WriteLine(text);
+                Console.Write(text);
                 Console.BackgroundColor = ConsoleColor.Black;
+                Console.WriteLine();
             }
             SecondLogger?.Log(text,logLevel);
         }

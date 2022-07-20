@@ -32,23 +32,38 @@ namespace SyncTool
             });
             var opt = new Options();
             Console.WriteLine("args: "+String.Join(" ",args.ToList()));
-            cmParser.ParseArguments<Options>(args).WithParsed(SyncJob);           
+            cmParser.ParseArguments<Options>(args).WithParsed(IntializeJob);           
         }
 
-       
-
-        private static void SyncJob(Options opt)
+        private static void IntializeJob(Options opt)
         {
             if (opt.Verbose)
             {
                 opt.LogLevel = LogLevel.Info;
             }
-            Logger.Logger.LoggerImpl = new ConsoleLogger(opt.LogLevel){
-                SecondLogger = new FileLogger(opt.LogLevel)               
+            Logger.Logger.LoggerImpl = new ConsoleLogger(opt.LogLevel)
+            {
+                SecondLogger = new FileLogger(opt.LogLevel)
             };
 
-            ((FileLogger) Logger.Logger.LoggerImpl.SecondLogger).PrintLogFileLocation();
+            ((FileLogger)Logger.Logger.LoggerImpl.SecondLogger).PrintLogFileLocation();
+
+            if (opt.RealTime)
+            {
+                Logger.Logger.Log($"=========== Starting realtime change tracking of {opt.Source.FullName} ===========",LogLevel.Info);
+                new FileWatcher(opt).Watch();
+                
+            } else
+            {
+                SyncJob(opt);
+            }
+        }
+       
+
+        private static void SyncJob(Options opt)
+        {
             
+                       
             var start = DateTime.Now;
             Logger.Logger.Log("======= Sync Tool started =======",LogLevel.Info);
             AppContext ctx = new AppContext()
@@ -64,7 +79,7 @@ namespace SyncTool
                 ctx = CompareDirectories.GetSavedFiles(opt.Source);
             }           
             
-            CompareMaps(ctx);
+            CompareMaps(ctx).Wait();
             CopyOrDeleteFiles(ctx);
             Logger.Logger.Log($"Total time: {DateTime.Now.Subtract(start):hh\\:mm\\:ss\\.fff}",LogLevel.Info);
             Logger.Logger.Log("======= Sync Tool Ended =======", LogLevel.Info);
@@ -118,10 +133,10 @@ namespace SyncTool
             }.CopyOrDeleteFiles();
         }
 
-        private static void CompareMaps(AppContext opt)
+        private static async Task CompareMaps(AppContext opt)
         {
             Logger.Logger.Log("Start comparing scanning results", LogLevel.Info);
-            new CompareDirectories(opt).CompareSourceAndTarget();
+           await new CompareDirectories(opt).CompareSourceAndTarget();
             Logger.Logger.Log("Comparing scanning results Completed", LogLevel.Info);
         }
 

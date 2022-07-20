@@ -24,8 +24,13 @@ namespace SyncTool.Implementations
                 // Return true to indicate that the files are the same.
                 return true;
             }
+            lock (file1)
+            {
+                lock (file2)
+                {
 
-            // Open the two files.
+       
+               // Open the two files.
             using FileStream fs1 = new FileStream(file1, FileMode.Open);
             using FileStream fs2 = new FileStream(file2, FileMode.Open);
 
@@ -41,12 +46,20 @@ namespace SyncTool.Implementations
                 return false;
             }
 
+            //check ID3 Tags
+            byte[] one = new byte[90];
+            byte[] two = new byte[90];
+
+                file1byte = fs1.Read(one,0,90);
+                file2byte = fs2.Read(two,0,90);
+
+            if(!((ReadOnlySpan<byte>) one).SequenceEqual((ReadOnlySpan<byte>) two)) return false;
             // Read and compare a byte from each file until either a
             // non-matching set of bytes is found or until the end of
             // file1 is reached.
-            const int BYTES_TO_READ = 1024;
-            byte[] one = new byte[BYTES_TO_READ];
-            byte[] two = new byte[BYTES_TO_READ];
+            const int BYTES_TO_READ = 1024*10;
+           one = new byte[BYTES_TO_READ];
+           two = new byte[BYTES_TO_READ];
 
             do
             {
@@ -65,5 +78,7 @@ namespace SyncTool.Implementations
             // the same.
             return ((file1byte - file2byte) == 0);
         }
+                         }
+            }
             }
         }
