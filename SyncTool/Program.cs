@@ -55,7 +55,7 @@ namespace SyncTool
                 return;
             }
 
-            if (opt.RealTime)
+            if (opt.Watch)
             {
                 Logger.Logger.Log($"=========== Starting realtime change tracking of {opt.Source.FullName} ===========",LogLevel.Info);
                 new FileWatcher(opt).Watch();
